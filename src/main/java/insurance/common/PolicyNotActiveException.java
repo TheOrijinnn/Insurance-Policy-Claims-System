@@ -12,6 +12,14 @@ public class PolicyNotActiveException extends InsuranceException {
         this.date = date;
     }
 
+    public String policyId() {
+        return policyId;
+    }
+
+    public LocalDate date() {
+        return date;
+    }
+
     public String getPolicyId() {
         return policyId;
     }

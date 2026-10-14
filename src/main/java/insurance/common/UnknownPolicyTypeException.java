@@ -8,6 +8,10 @@ public class UnknownPolicyTypeException extends InsuranceException {
         this.type = type;
     }
 
+    public String type() {
+        return type;
+    }
+
     public String getType() {
         return type;
     }

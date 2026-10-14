@@ -10,6 +10,14 @@ public class CoverageLimitExceededException extends InsuranceException {
         this.remaining = remaining;
     }
 
+    public String policyId() {
+        return policyId;
+    }
+
+    public Money remaining() {
+        return remaining;
+    }
+
     public String getPolicyId() {
         return policyId;
     }
