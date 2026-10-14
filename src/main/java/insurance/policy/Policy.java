@@ -4,17 +4,30 @@ import insurance.common.CoverageLimitExceededException;
 import insurance.common.Money;
 import insurance.common.PolicyNotActiveException;
 import insurance.common.PolicyPeriod;
+
 import java.time.LocalDate;
+import java.util.Objects;
 
 public abstract class Policy {
-    protected final String id;
-    protected final PolicyPeriod period;
-    protected final Money coverageLimit;
+    private final String id;
+    private final PolicyPeriod period;
+    private final Money coverageLimit;
+    private Money totalPayout;
 
     protected Policy(String id, PolicyPeriod period, Money coverageLimit) {
+        if (id == null || id.isBlank()) {
+            throw new IllegalArgumentException("Policy id cannot be null or empty");
+        }
+        if (period == null) {
+            throw new IllegalArgumentException("Policy period cannot be null");
+        }
+        if (coverageLimit == null || !coverageLimit.isPositive()) {
+            throw new IllegalArgumentException("Coverage limit must be positive");
+        }
         this.id = id;
         this.period = period;
         this.coverageLimit = coverageLimit;
+        this.totalPayout = Money.ZERO;
     }
 
     /**
@@ -30,27 +43,53 @@ public abstract class Policy {
      * Tính nguyên tử                   | Nếu ném exception thì totalPayout không đổi
      */
     public final Money approvePayout(Money loss, LocalDate lossDate) {
-        throw new UnsupportedOperationException("TODO");
+        // 1. requireActiveOn: ném PolicyNotActiveException nếu lossDate ngoài period
+        requireActiveOn(lossDate);
+
+        // 2. calculatePayout theo luật của từng subtype
+        Money calculated = calculatePayout(loss);
+
+        // 3. tính remainingLimit
+        Money remaining = remainingLimit();
+
+        // 4. kiểm tra ném exception: payout theo luật > 0 mà remainingLimit = 0
+        if (calculated.isPositive() && remaining.isZero()) {
+            throw new CoverageLimitExceededException(id, remaining);
+        }
+
+        // 5. cap theo remaining limit
+        Money actualPayout = calculated.min(remaining);
+
+        // 6. chỉ cập nhật totalPayout khi thành công
+        this.totalPayout = this.totalPayout.plus(actualPayout);
+
+        return actualPayout;
     }
 
     public final void requireActiveOn(LocalDate d) {
-        throw new UnsupportedOperationException("TODO");
+        if (!isActiveOn(d)) {
+            throw new PolicyNotActiveException(id, d);
+        }
     }
 
     public final boolean isActiveOn(LocalDate d) {
-        throw new UnsupportedOperationException("TODO");
+        return period.contains(d);
     }
 
     public final Money remainingLimit() {
-        throw new UnsupportedOperationException("TODO");
+        return coverageLimit.minus(totalPayout);
     }
 
     public final Money totalPayout() {
-        throw new UnsupportedOperationException("TODO");
+        return totalPayout;
     }
 
     public final Money coverageLimit() {
-        throw new UnsupportedOperationException("TODO");
+        return coverageLimit;
+    }
+
+    public final PolicyPeriod period() {
+        return period;
     }
 
     public final String id() {
