@@ -1,22 +1,22 @@
 package insurance.common;
 
 import java.time.LocalDate;
+import java.util.Objects;
 
-public final class PolicyPeriod {
-    private final LocalDate start;
-    private final LocalDate end;
-
-    public PolicyPeriod(LocalDate start, LocalDate end) {
-        this.start = start;
-        this.end = end;
+public record PolicyPeriod(LocalDate start, LocalDate end) {
+    public PolicyPeriod {
+        Objects.requireNonNull(start, "Start date cannot be null");
+        Objects.requireNonNull(end, "End date cannot be null");
+        if (!start.isBefore(end)) {
+            throw new IllegalArgumentException("Start date (" + start + ") must be before end date (" + end + ")");
+        }
     }
 
-    public LocalDate start() {
-        return start;
-    }
-
-    public LocalDate end() {
-        return end;
+    public boolean contains(LocalDate d) {
+        if (d == null) {
+            return false;
+        }
+        return !d.isBefore(start) && d.isBefore(end);
     }
 
     public LocalDate getStart() {
@@ -25,13 +25,5 @@ public final class PolicyPeriod {
 
     public LocalDate getEnd() {
         return end;
-    }
-
-    /**
-     * Kiểm tra xem ngày d có nằm trong kỳ bảo hiểm hay không.
-     * Quy tắc: start <= d < end
-     */
-    public boolean contains(LocalDate d) {
-        throw new UnsupportedOperationException("TODO");
     }
 }
