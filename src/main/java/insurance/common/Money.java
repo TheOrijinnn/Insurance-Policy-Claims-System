@@ -2,65 +2,76 @@ package insurance.common;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.Locale;
+import java.util.Objects;
 
 public final class Money implements Comparable<Money> {
-    private final BigDecimal amount;
+    private final BigDecimal value; // luôn scale 0
 
-    private Money(BigDecimal amount) {
-        this.amount = amount != null ? amount.setScale(0, RoundingMode.HALF_UP) : BigDecimal.ZERO;
+    private Money(BigDecimal v) {
+        Objects.requireNonNull(v, "Value cannot be null");
+        this.value = v.setScale(0, RoundingMode.HALF_UP);
     }
 
-    public static final Money ZERO = new Money(BigDecimal.ZERO); // khởi tạo thật, không để null
+    public static final Money ZERO = new Money(BigDecimal.ZERO);
 
-    public static Money of(String amount) { // scale 0, HALF_UP
-        throw new UnsupportedOperationException("TODO");
+    public static Money of(String s) {
+        Objects.requireNonNull(s, "Amount string cannot be null");
+        return new Money(new BigDecimal(s));
     }
 
     public Money plus(Money o) {
-        throw new UnsupportedOperationException("TODO");
+        Objects.requireNonNull(o, "Money operand cannot be null");
+        return new Money(value.add(o.value));
     }
 
     public Money minus(Money o) { // được phép ra số âm
-        throw new UnsupportedOperationException("TODO");
+        Objects.requireNonNull(o, "Money operand cannot be null");
+        return new Money(value.subtract(o.value));
     }
 
-    public Money times(String factor) { // "0.85" -> làm tròn về scale 0
-        throw new UnsupportedOperationException("TODO");
+    public Money times(String f) { // "0.85" -> làm tròn về scale 0
+        Objects.requireNonNull(f, "Factor cannot be null");
+        return new Money(value.multiply(new BigDecimal(f)));
     }
 
     public Money min(Money o) {
-        throw new UnsupportedOperationException("TODO");
+        Objects.requireNonNull(o, "Money operand cannot be null");
+        return compareTo(o) <= 0 ? this : o;
     }
 
     public Money atLeastZero() {
-        throw new UnsupportedOperationException("TODO");
+        return value.signum() < 0 ? ZERO : this;
     }
 
     public boolean isZero() {
-        throw new UnsupportedOperationException("TODO");
+        return value.signum() == 0;
     }
 
     public boolean isPositive() {
-        throw new UnsupportedOperationException("TODO");
+        return value.signum() > 0;
     }
 
     @Override
     public int compareTo(Money o) {
-        throw new UnsupportedOperationException("TODO");
+        return this.value.compareTo(o.value);
     }
 
     @Override
     public boolean equals(Object o) {
-        throw new UnsupportedOperationException("TODO");
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Money money = (Money) o;
+        return this.compareTo(money) == 0;
     }
 
     @Override
     public int hashCode() {
-        throw new UnsupportedOperationException("TODO");
+        return value.hashCode();
     }
 
     @Override
     public String toString() { // định dạng 45.000.000
-        throw new UnsupportedOperationException("TODO");
+        return String.format(Locale.GERMANY, "%,d", value.longValueExact());
     }
 }
