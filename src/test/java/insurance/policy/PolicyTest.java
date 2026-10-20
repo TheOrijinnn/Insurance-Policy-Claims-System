@@ -92,36 +92,119 @@ class PolicyTest {
     }
 
     @Test
-    @DisplayName("lossDate = 2027-01-01 ngoài kỳ -> PolicyNotActiveException, totalPayout không đổi")
-    void testLossDateOutOfPeriodThrows() {
+    @DisplayName("Chuỗi Auto: 4 lần approvePayout(50tr) -> 45tr, 45tr, 10tr (cap), lần 4 ném CoverageLimitExceededException")
+    void testAutoSequenceCappingAndBlocking() {
         AutoPolicy auto = new AutoPolicy("POL-AUTO", period2026, limit100m);
         Money loss50m = Money.of("50000000");
 
-        PolicyNotActiveException ex = assertThrows(PolicyNotActiveException.class,
-                () -> auto.approvePayout(loss50m, invalidLossDate));
+        assertEquals(Money.of("45000000"), auto.approvePayout(loss50m, validLossDate));
+        assertEquals(Money.of("45000000"), auto.approvePayout(loss50m, validLossDate));
+        assertEquals(Money.of("10000000"), auto.approvePayout(loss50m, validLossDate));
+        assertEquals(Money.of("100000000"), auto.totalPayout());
+        assertEquals(Money.ZERO, auto.remainingLimit());
 
+        CoverageLimitExceededException ex = assertThrows(CoverageLimitExceededException.class,
+                () -> auto.approvePayout(loss50m, validLossDate));
         assertEquals("POL-AUTO", ex.policyId());
-        assertEquals(invalidLossDate, ex.date());
+        assertEquals(Money.ZERO, ex.remaining());
+        assertEquals(Money.of("100000000"), auto.totalPayout());
+        assertEquals(Money.ZERO, auto.remainingLimit());
+    }
+
+    @Test
+    @DisplayName("Chuỗi Health: loss 50tr, 80tr, 10tr -> 38,4tr; 61,6tr (cap từ 62,4tr); lần 3 ném exception")
+    void testHealthSequenceCappingAndBlocking() {
+        HealthPolicy health = new HealthPolicy("POL-HEALTH", period2026, limit100m);
+
+        assertEquals(Money.of("38400000"), health.approvePayout(Money.of("50000000"), validLossDate));
+        assertEquals(Money.of("61600000"), health.approvePayout(Money.of("80000000"), validLossDate));
+        assertEquals(Money.of("100000000"), health.totalPayout());
+        assertEquals(Money.ZERO, health.remainingLimit());
+
+        CoverageLimitExceededException ex = assertThrows(CoverageLimitExceededException.class,
+                () -> health.approvePayout(Money.of("10000000"), validLossDate));
+        assertEquals("POL-HEALTH", ex.policyId());
+        assertEquals(Money.ZERO, ex.remaining());
+        assertEquals(Money.of("100000000"), health.totalPayout());
+    }
+
+    @Test
+    @DisplayName("Biên: raw = remaining -> Auto loss 60tr rồi 50tr ra 55tr rồi 45tr, remaining = 0")
+    void testBoundaryRawEqualsRemaining() {
+        AutoPolicy auto = new AutoPolicy("POL-AUTO", period2026, limit100m);
+
+        assertEquals(Money.of("55000000"), auto.approvePayout(Money.of("60000000"), validLossDate));
+        assertEquals(Money.of("45000000"), auto.approvePayout(Money.of("50000000"), validLossDate));
+        assertEquals(Money.ZERO, auto.remainingLimit());
+        assertEquals(Money.of("100000000"), auto.totalPayout());
+    }
+
+    @Test
+    @DisplayName("Hết limit mà raw = 0: Auto đã đầy, loss 3tr -> payout 0, không ném, totalPayout vẫn 100tr")
+    void testFullLimitWithZeroRawPayoutDoesNotThrow() {
+        AutoPolicy auto = new AutoPolicy("POL-AUTO", period2026, limit100m);
+        auto.approvePayout(Money.of("60000000"), validLossDate);
+        auto.approvePayout(Money.of("50000000"), validLossDate);
+        assertEquals(Money.ZERO, auto.remainingLimit());
+
+        Money payout = auto.approvePayout(Money.of("3000000"), validLossDate);
+        assertEquals(Money.ZERO, payout);
+        assertEquals(Money.of("100000000"), auto.totalPayout());
+        assertEquals(Money.ZERO, auto.remainingLimit());
+    }
+
+    @Test
+    @DisplayName("Nguyên tử: Sau lần bị ném exception, totalPayout và remainingLimit không đổi")
+    void testAtomicityAfterException() {
+        AutoPolicy auto = new AutoPolicy("POL-AUTO", period2026, limit100m);
+        auto.approvePayout(Money.of("50000000"), validLossDate);
+        Money totalBefore = auto.totalPayout();
+        Money remainingBefore = auto.remainingLimit();
+
+        assertThrows(PolicyNotActiveException.class,
+                () -> auto.approvePayout(Money.of("50000000"), invalidLossDate));
+        assertEquals(totalBefore, auto.totalPayout());
+        assertEquals(remainingBefore, auto.remainingLimit());
+
+        assertThrows(IllegalArgumentException.class,
+                () -> auto.approvePayout(Money.of("-10000000"), validLossDate));
+        assertEquals(totalBefore, auto.totalPayout());
+        assertEquals(remainingBefore, auto.remainingLimit());
+    }
+
+    @Test
+    @DisplayName("Ngoài kỳ: lossDate = 2027-01-01 và 2025-12-31 -> PolicyNotActiveException, totalPayout không đổi")
+    void testLossDateOutOfPeriodThrows() {
+        AutoPolicy auto = new AutoPolicy("POL-AUTO", period2026, limit100m);
+        Money loss50m = Money.of("50000000");
+        LocalDate beforeStart = LocalDate.of(2025, 12, 31);
+
+        PolicyNotActiveException exAfter = assertThrows(PolicyNotActiveException.class,
+                () -> auto.approvePayout(loss50m, invalidLossDate));
+        assertEquals("POL-AUTO", exAfter.policyId());
+        assertEquals(invalidLossDate, exAfter.date());
+        assertEquals(Money.ZERO, auto.totalPayout());
+
+        PolicyNotActiveException exBefore = assertThrows(PolicyNotActiveException.class,
+                () -> auto.approvePayout(loss50m, beforeStart));
+        assertEquals("POL-AUTO", exBefore.policyId());
+        assertEquals(beforeStart, exBefore.date());
         assertEquals(Money.ZERO, auto.totalPayout());
     }
 
     @Test
-    @DisplayName("Khi remainingLimit = 0 mà payout > 0 -> ném CoverageLimitExceededException, totalPayout không đổi")
-    void testCoverageLimitExceeded() {
-        AutoPolicy auto = new AutoPolicy("POL-AUTO", period2026, Money.of("45000000"));
-        Money loss50m = Money.of("50000000");
+    @DisplayName("Loss không dương: loss 0 và -1 -> IllegalArgumentException, totalPayout không đổi")
+    void testNonPositiveLossThrows() {
+        HomePolicy home = new HomePolicy("POL-HOME", period2026, limit100m);
+        home.approvePayout(Money.of("50000000"), validLossDate);
+        Money expectedTotal = Money.of("42500000");
 
-        // First payout uses up all 45m limit
-        Money firstPayout = auto.approvePayout(loss50m, validLossDate);
-        assertEquals(Money.of("45000000"), firstPayout);
-        assertEquals(Money.ZERO, auto.remainingLimit());
+        assertThrows(IllegalArgumentException.class,
+                () -> home.approvePayout(Money.ZERO, validLossDate));
+        assertEquals(expectedTotal, home.totalPayout());
 
-        // Second payout should throw CoverageLimitExceededException
-        CoverageLimitExceededException ex = assertThrows(CoverageLimitExceededException.class,
-                () -> auto.approvePayout(loss50m, validLossDate));
-
-        assertEquals("POL-AUTO", ex.policyId());
-        assertEquals(Money.ZERO, ex.remaining());
-        assertEquals(Money.of("45000000"), auto.totalPayout());
+        assertThrows(IllegalArgumentException.class,
+                () -> home.approvePayout(Money.of("-1"), validLossDate));
+        assertEquals(expectedTotal, home.totalPayout());
     }
 }

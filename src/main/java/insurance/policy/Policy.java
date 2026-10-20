@@ -43,27 +43,18 @@ public abstract class Policy {
      * Tính nguyên tử                   | Nếu ném exception thì totalPayout không đổi
      */
     public final Money approvePayout(Money loss, LocalDate lossDate) {
-        // 1. requireActiveOn: ném PolicyNotActiveException nếu lossDate ngoài period
+        if (loss == null || !loss.isPositive()) {
+            throw new IllegalArgumentException("Loss must be positive");
+        }
         requireActiveOn(lossDate);
-
-        // 2. calculatePayout theo luật của từng subtype
-        Money calculated = calculatePayout(loss);
-
-        // 3. tính remainingLimit
-        Money remaining = remainingLimit();
-
-        // 4. kiểm tra ném exception: payout theo luật > 0 mà remainingLimit = 0
-        if (calculated.isPositive() && remaining.isZero()) {
+        Money raw = calculatePayout(loss);
+        Money remaining = coverageLimit.minus(totalPayout);
+        if (raw.isPositive() && remaining.isZero()) {
             throw new CoverageLimitExceededException(id, remaining);
         }
-
-        // 5. cap theo remaining limit
-        Money actualPayout = calculated.min(remaining);
-
-        // 6. chỉ cập nhật totalPayout khi thành công
-        this.totalPayout = this.totalPayout.plus(actualPayout);
-
-        return actualPayout;
+        Money payout = raw.min(remaining);
+        totalPayout = totalPayout.plus(payout);
+        return payout;
     }
 
     public final void requireActiveOn(LocalDate d) {
