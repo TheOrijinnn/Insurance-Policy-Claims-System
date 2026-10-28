@@ -2,7 +2,6 @@ package insurance.claim;
 
 import insurance.common.InvalidClaimTransitionException;
 import insurance.common.Money;
-import insurance.common.PolicyNotActiveException;
 import insurance.common.PolicyPeriod;
 import insurance.policy.AutoPolicy;
 import insurance.policy.Policy;
@@ -161,7 +160,7 @@ class ClaimStateTest {
     }
 
     // ==========================================
-    // 2 test lẻ bắt buộc ở Block 4
+    // Test lẻ bắt buộc ở Block 4 (ca approve ngoài kỳ hiệu lực: xem T7 trong PolymorphismAndPeriodTest)
     // ==========================================
 
     @Test
@@ -173,25 +172,13 @@ class ClaimStateTest {
         assertTrue(c.rejectionReason().isEmpty());
     }
 
-    @Test
-    @DisplayName("Claim có lossDate ngoài kỳ, approve ném PolicyNotActiveException, vẫn UnderReview, totalPayout = 0")
-    void testApproveOutOfPeriodStaysUnderReview() {
-        Claim c = new Claim("CLM-OUT", policy, loss, LocalDate.of(2027, 1, 1));
-        c.startReview();
-
-        assertThrows(PolicyNotActiveException.class, c::approve);
-        assertEquals("UnderReview", c.stateName());
-        assertTrue(c.approvedPayout().isEmpty());
-        assertEquals(Money.ZERO, policy.totalPayout());
-    }
-
     // ==========================================
     // Block 6: T3 và T4 (kiểm tra approvedPayout và chuỗi 45 / 45 / 10 / chặn ở mức Claim)
     // ==========================================
 
     @Test
     @DisplayName("T3: Approve xong, gọi approve() lần 2 -> InvalidClaimTransitionException, totalPayout vẫn 45tr, approvedPayout vẫn 45tr")
-    void testT3ApproveTwiceBlockedAndPreservesPayouts() {
+    void testT3_ApproveTwiceBlockedAndPreservesPayouts() {
         Claim c = in("Approved");
         assertEquals(Money.of("45000000"), c.approvedPayout().orElseThrow());
         assertEquals(Money.of("45000000"), policy.totalPayout());
@@ -206,7 +193,7 @@ class ClaimStateTest {
 
     @Test
     @DisplayName("T4: Một AutoPolicy, 3 claim loss 50tr duyệt (45tr, 45tr, 10tr), claim thứ 4 startReview rồi approve -> CoverageLimitExceededException")
-    void testT4FourClaimsCoverageLimitCappingAndBlocking() {
+    void testT4_FourClaimsCoverageLimitCappingAndBlocking() {
         Claim c1 = new Claim("CLM-1", policy, loss, lossDate);
         Claim c2 = new Claim("CLM-2", policy, loss, lossDate);
         Claim c3 = new Claim("CLM-3", policy, loss, lossDate);

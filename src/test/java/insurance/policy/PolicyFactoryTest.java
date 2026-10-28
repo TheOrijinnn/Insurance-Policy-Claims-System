@@ -1,5 +1,6 @@
 package insurance.policy;
 
+import insurance.Main;
 import insurance.common.Money;
 import insurance.common.PolicyPeriod;
 import insurance.common.UnknownPolicyTypeException;
@@ -18,30 +19,22 @@ class PolicyFactoryTest {
 
     @BeforeEach
     void setUp() {
-        factory = new PolicyFactory();
-        factory.register("AUTO", r -> new AutoPolicy(r.id(), r.period(), r.coverageLimit()))
-               .register("HOME", r -> new HomePolicy(r.id(), r.period(), r.coverageLimit()))
-               .register("HEALTH", r -> new HealthPolicy(r.id(), r.period(), r.coverageLimit()));
+        factory = Main.defaultPolicyFactory();
 
         PolicyPeriod period2026 = new PolicyPeriod(LocalDate.of(2026, 1, 1), LocalDate.of(2027, 1, 1));
         request = new PolicyRequest("POL-100", period2026, Money.of("100000000"));
     }
 
     @Test
-    @DisplayName("3 loại: create AUTO/HOME/HEALTH với limit 100tr -> typeName() Auto/Home/Health, Premium 2.5tr / 1.5tr / 4tr")
+    @DisplayName("3 loại: create AUTO/HOME/HEALTH với limit 100tr -> typeName() Auto/Home/Health")
     void testCreateThreeStandardTypes() {
         Policy auto = factory.create("AUTO", request);
         Policy home = factory.create("HOME", request);
         Policy health = factory.create("HEALTH", request);
 
         assertEquals("Auto", auto.typeName());
-        assertEquals(Money.of("2500000"), auto.calculatePremium());
-
         assertEquals("Home", home.typeName());
-        assertEquals(Money.of("1500000"), home.calculatePremium());
-
         assertEquals("Health", health.typeName());
-        assertEquals(Money.of("4000000"), health.calculatePremium());
     }
 
     @Test

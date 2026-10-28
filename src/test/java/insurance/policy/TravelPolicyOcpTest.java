@@ -3,6 +3,7 @@ package insurance.policy;
 import insurance.claim.Claim;
 import insurance.common.Money;
 import insurance.common.PolicyPeriod;
+import insurance.engine.ClaimsProcessor;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -13,7 +14,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class TravelPolicyOcpTest {
 
     @Test
-    @DisplayName("T6: OCP - Định nghĩa TravelPolicy trong src/test, đăng ký vào PolicyFactory, payout 35.000.000")
+    @DisplayName("T6: OCP - TravelPolicy định nghĩa trong src/test, tạo qua PolicyFactory, xử lý qua ClaimsProcessor không sửa đổi -> payout 35.000.000")
     void testT6_OpenClosedPrinciple_TravelPolicyExtension() {
         System.out.println("\n========== [DEMO - T6 OCP: MỞ RỘNG TRAVELPOLICY TRONG SRC/TEST] ==========");
         PolicyPeriod period2026 = new PolicyPeriod(LocalDate.of(2026, 1, 1), LocalDate.of(2027, 1, 1));
@@ -34,17 +35,14 @@ class TravelPolicyOcpTest {
 
         // 3. Tạo Claim và duyệt chi trả với loss = 50.000.000 VND
         Claim claim = new Claim("CLM-TRAV-01", travelPolicy, Money.of("50000000"), LocalDate.of(2026, 7, 20));
-        claim.startReview();
-        claim.approve();
-
-        Money payout = claim.approvedPayout().orElseThrow();
+        Money payout = new ClaimsProcessor().process(claim);
         System.out.println("[T6 OCP] Duyệt chi trả yêu cầu bồi thường tổn thất 50.000.000 VND -> Payout: " + payout + " VND");
 
-        // Tiêu chí Done: Payout 35.000.000 VND, trạng thái Approved
+        // Tiêu chí Done: Payout 35.000.000 VND, trạng thái Paid (ClaimsProcessor không cần sửa)
         assertEquals(Money.of("35000000"), payout);
         assertEquals(Money.of("35000000"), travelPolicy.totalPayout());
         assertEquals(Money.of("65000000"), travelPolicy.remainingLimit());
-        assertEquals("Approved", claim.stateName());
+        assertEquals("Paid", claim.stateName());
 
         System.out.println("========== [HOÀN THÀNH T6 OCP: PAYOUT 35.000.000 VND, SRC/MAIN KHÔNG THAY ĐỔI] ==========\n");
     }

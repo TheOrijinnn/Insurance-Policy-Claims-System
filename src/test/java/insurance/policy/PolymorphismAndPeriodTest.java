@@ -4,6 +4,7 @@ import insurance.claim.Claim;
 import insurance.common.Money;
 import insurance.common.PolicyNotActiveException;
 import insurance.common.PolicyPeriod;
+import insurance.engine.ClaimsProcessor;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -28,22 +29,23 @@ class PolymorphismAndPeriodTest {
     }
 
     @Test
-    @DisplayName("T5: Đa hình Auto / Home / Health với loss 50tr ra 45tr / 42,5tr / 38,4tr")
+    @DisplayName("T5: Đa hình qua ClaimsProcessor - Auto / Home / Health với loss 50tr ra 45tr / 42,5tr / 38,4tr")
     void testT5_PolymorphicPayouts() {
         System.out.println("\n========== [DEMO - T5 ĐA HÌNH AUTO / HOME / HEALTH] ==========");
         Money loss50m = Money.of("50000000");
+        ClaimsProcessor processor = new ClaimsProcessor(); // cùng một processor, không biết loại hợp đồng
 
         // 1. AutoPolicy: deductible 5.000.000 -> payout = 50tr - 5tr = 45tr
         Policy auto = new AutoPolicy("POL-AUTO", period2026, limit100m);
-        Money autoPayout = auto.approvePayout(loss50m, validLossDate);
+        Money autoPayout = processor.process(new Claim("CLM-AUTO", auto, loss50m, validLossDate));
 
         // 2. HomePolicy: factor 0.85 -> payout = 50tr * 0.85 = 42,5tr
         Policy home = new HomePolicy("POL-HOME", period2026, limit100m);
-        Money homePayout = home.approvePayout(loss50m, validLossDate);
+        Money homePayout = processor.process(new Claim("CLM-HOME", home, loss50m, validLossDate));
 
         // 3. HealthPolicy: deductible 2.000.000, factor 0.80 -> payout = (50tr - 2tr) * 0.80 = 38,4tr
         Policy health = new HealthPolicy("POL-HEALTH", period2026, limit100m);
-        Money healthPayout = health.approvePayout(loss50m, validLossDate);
+        Money healthPayout = processor.process(new Claim("CLM-HEALTH", health, loss50m, validLossDate));
 
         System.out.println("[T5 Polymorphism] Đánh giá tổn thất 50.000.000 VND trên 3 loại hợp đồng:");
         System.out.println("  + AutoPolicy   -> Payout: " + autoPayout + " VND (Kỳ vọng: 45.000.000 VND)");
@@ -54,6 +56,9 @@ class PolymorphismAndPeriodTest {
         assertEquals(Money.of("45000000"), autoPayout);
         assertEquals(Money.of("42500000"), homePayout);
         assertEquals(Money.of("38400000"), healthPayout);
+        assertEquals(Money.of("55000000"), auto.remainingLimit());
+        assertEquals(Money.of("57500000"), home.remainingLimit());
+        assertEquals(Money.of("61600000"), health.remainingLimit());
 
         System.out.println("========== [HOÀN THÀNH T5: KẾT QUẢ CHUẨN XÁC 45TR / 42,5TR / 38,4TR] ==========\n");
     }

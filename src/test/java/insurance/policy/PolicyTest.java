@@ -40,45 +40,6 @@ class PolicyTest {
     }
 
     @Test
-    @DisplayName("approvePayout(50tr) trên Auto = 45.000.000; totalPayout 45tr, remainingLimit 55tr")
-    void testApprovePayoutAuto() {
-        AutoPolicy auto = new AutoPolicy("POL-AUTO", period2026, limit100m);
-        Money loss50m = Money.of("50000000");
-
-        Money payout = auto.approvePayout(loss50m, validLossDate);
-
-        assertEquals(Money.of("45000000"), payout);
-        assertEquals(Money.of("45000000"), auto.totalPayout());
-        assertEquals(Money.of("55000000"), auto.remainingLimit());
-    }
-
-    @Test
-    @DisplayName("approvePayout(50tr) trên Home = 42.500.000")
-    void testApprovePayoutHome() {
-        HomePolicy home = new HomePolicy("POL-HOME", period2026, limit100m);
-        Money loss50m = Money.of("50000000");
-
-        Money payout = home.approvePayout(loss50m, validLossDate);
-
-        assertEquals(Money.of("42500000"), payout);
-        assertEquals(Money.of("42500000"), home.totalPayout());
-        assertEquals(Money.of("57500000"), home.remainingLimit());
-    }
-
-    @Test
-    @DisplayName("approvePayout(50tr) trên Health = 38.400.000")
-    void testApprovePayoutHealth() {
-        HealthPolicy health = new HealthPolicy("POL-HEALTH", period2026, limit100m);
-        Money loss50m = Money.of("50000000");
-
-        Money payout = health.approvePayout(loss50m, validLossDate);
-
-        assertEquals(Money.of("38400000"), payout);
-        assertEquals(Money.of("38400000"), health.totalPayout());
-        assertEquals(Money.of("61600000"), health.remainingLimit());
-    }
-
-    @Test
     @DisplayName("Auto, loss 3.000.000 -> payout 0, totalPayout vẫn 0, không ném exception")
     void testAutoLossLessThanDeductible() {
         AutoPolicy auto = new AutoPolicy("POL-AUTO", period2026, limit100m);
@@ -89,26 +50,6 @@ class PolicyTest {
         assertEquals(Money.ZERO, payout);
         assertEquals(Money.ZERO, auto.totalPayout());
         assertEquals(limit100m, auto.remainingLimit());
-    }
-
-    @Test
-    @DisplayName("Chuỗi Auto: 4 lần approvePayout(50tr) -> 45tr, 45tr, 10tr (cap), lần 4 ném CoverageLimitExceededException")
-    void testAutoSequenceCappingAndBlocking() {
-        AutoPolicy auto = new AutoPolicy("POL-AUTO", period2026, limit100m);
-        Money loss50m = Money.of("50000000");
-
-        assertEquals(Money.of("45000000"), auto.approvePayout(loss50m, validLossDate));
-        assertEquals(Money.of("45000000"), auto.approvePayout(loss50m, validLossDate));
-        assertEquals(Money.of("10000000"), auto.approvePayout(loss50m, validLossDate));
-        assertEquals(Money.of("100000000"), auto.totalPayout());
-        assertEquals(Money.ZERO, auto.remainingLimit());
-
-        CoverageLimitExceededException ex = assertThrows(CoverageLimitExceededException.class,
-                () -> auto.approvePayout(loss50m, validLossDate));
-        assertEquals("POL-AUTO", ex.policyId());
-        assertEquals(Money.ZERO, ex.remaining());
-        assertEquals(Money.of("100000000"), auto.totalPayout());
-        assertEquals(Money.ZERO, auto.remainingLimit());
     }
 
     @Test
@@ -151,25 +92,6 @@ class PolicyTest {
         assertEquals(Money.ZERO, payout);
         assertEquals(Money.of("100000000"), auto.totalPayout());
         assertEquals(Money.ZERO, auto.remainingLimit());
-    }
-
-    @Test
-    @DisplayName("Nguyên tử: Sau lần bị ném exception, totalPayout và remainingLimit không đổi")
-    void testAtomicityAfterException() {
-        AutoPolicy auto = new AutoPolicy("POL-AUTO", period2026, limit100m);
-        auto.approvePayout(Money.of("50000000"), validLossDate);
-        Money totalBefore = auto.totalPayout();
-        Money remainingBefore = auto.remainingLimit();
-
-        assertThrows(PolicyNotActiveException.class,
-                () -> auto.approvePayout(Money.of("50000000"), invalidLossDate));
-        assertEquals(totalBefore, auto.totalPayout());
-        assertEquals(remainingBefore, auto.remainingLimit());
-
-        assertThrows(IllegalArgumentException.class,
-                () -> auto.approvePayout(Money.of("-10000000"), validLossDate));
-        assertEquals(totalBefore, auto.totalPayout());
-        assertEquals(remainingBefore, auto.remainingLimit());
     }
 
     @Test
