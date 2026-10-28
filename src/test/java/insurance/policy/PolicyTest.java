@@ -173,6 +173,21 @@ class PolicyTest {
     }
 
     @Test
+    @DisplayName("Subtype tính ra payout âm -> Policy chặn về 0, totalPayout và hạn mức không đổi")
+    void testNegativeRawPayoutFromSubtypeIsClampedToZero() {
+        Policy faulty = new AutoPolicy("POL-FAULTY", period2026, limit100m) {
+            @Override
+            protected Money calculatePayout(Money loss) {
+                return loss.minus(Money.of("10000000"));
+            }
+        };
+
+        assertEquals(Money.ZERO, faulty.approvePayout(Money.of("5000000"), validLossDate));
+        assertEquals(Money.ZERO, faulty.totalPayout());
+        assertEquals(limit100m, faulty.remainingLimit());
+    }
+
+    @Test
     @DisplayName("Ngoài kỳ: lossDate = 2027-01-01 và 2025-12-31 -> PolicyNotActiveException, totalPayout không đổi")
     void testLossDateOutOfPeriodThrows() {
         AutoPolicy auto = new AutoPolicy("POL-AUTO", period2026, limit100m);

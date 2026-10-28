@@ -15,6 +15,9 @@ public final class ClaimRegistry {
 
     public void add(Claim claim) {
         Objects.requireNonNull(claim, "Claim cannot be null");
+        if (claims.contains(claim)) {
+            throw new IllegalArgumentException("Duplicate claim instance is not allowed: " + claim.id());
+        }
         claims.add(claim);
     }
 

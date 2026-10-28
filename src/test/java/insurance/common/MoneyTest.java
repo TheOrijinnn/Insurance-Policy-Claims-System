@@ -103,5 +103,6 @@ class MoneyTest {
     @DisplayName("13. of('45000000').toString() = '45.000.000'")
     void test13_toStringFormat() {
         assertEquals("45.000.000", Money.of("45000000").toString());
+        assertEquals("9.223.372.036.854.775.808", Money.of("9223372036854775808").toString());
     }
 }

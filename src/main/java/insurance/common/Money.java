@@ -72,6 +72,6 @@ public final class Money implements Comparable<Money> {
 
     @Override
     public String toString() { // định dạng 45.000.000
-        return String.format(Locale.GERMANY, "%,d", value.longValueExact());
+        return String.format(Locale.GERMANY, "%,d", value.toBigInteger());
     }
 }

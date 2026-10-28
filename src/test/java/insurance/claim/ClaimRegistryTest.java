@@ -61,4 +61,15 @@ class ClaimRegistryTest {
         Claim extra = new Claim("C-EXTRA", anPolicy1, Money.of("10000000"), lossDate);
         assertThrows(UnsupportedOperationException.class, () -> registry.all().add(extra));
     }
+
+    @Test
+    @DisplayName("add() cùng một Claim hai lần -> IllegalArgumentException, registry không bị nhân đôi")
+    void testAddDuplicateClaimThrows() {
+        Claim claim = new Claim("C-1", new AutoPolicy("P-1", period2026, limit100m), Money.of("20000000"), lossDate);
+        ClaimRegistry registry = new ClaimRegistry();
+        registry.add(claim);
+
+        assertThrows(IllegalArgumentException.class, () -> registry.add(claim));
+        assertEquals(List.of(claim), registry.all());
+    }
 }

@@ -46,7 +46,8 @@ public abstract class Policy {
             throw new IllegalArgumentException("Loss must be positive");
         }
         requireActiveOn(lossDate);
-        Money raw = calculatePayout(loss);
+        // Chặn ở lớp cha: subtype trả về số âm cũng không được làm giảm totalPayout
+        Money raw = calculatePayout(loss).atLeastZero();
         Money remaining = remainingLimit();
         if (raw.isPositive() && remaining.isZero()) {
             throw new CoverageLimitExceededException(id, remaining);
