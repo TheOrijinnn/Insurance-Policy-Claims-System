@@ -70,3 +70,29 @@
 4. **Hành vi kế thừa**: `SubmittedState` không override hàm `pay(Claim c)` mà sử dụng hành vi mặc định `default` định nghĩa tại interface `ClaimState`.
 5. **Ném ngoại lệ**: `ClaimState.pay(Claim c)` ném `new InvalidClaimTransitionException(name(), "pay")` với `stateName() = "Submitted"` và `action() = "pay"`.
 6. **Bảo toàn trạng thái**: Trạng thái của `claim` không thay đổi, vẫn là `Submitted`.
+
+---
+
+## Rà soát & dọn dẹp (Tuần 2)
+
+### 5. [QUYẾT ĐỊNH] `Policy.approvePayout` tự chặn payout âm từ lớp con
+- **Nội dung**: `Money raw = calculatePayout(loss).atLeastZero();` ngay trong phương thức `final` của lớp cha.
+- **Lý do**: Bất biến hạn mức thuộc về `Policy`, không phụ thuộc việc từng lớp con nhớ gọi `atLeastZero()`. Một loại hợp đồng mới (OCP) có công thức trả về số âm cũng không thể làm giảm `totalPayout`.
+
+### 6. [QUYẾT ĐỊNH] `ClaimsProcessor` chuyển claim sang `Rejected` khi `Policy` từ chối chi trả
+- **Nội dung**: Nếu `claim.approve()` ném `InsuranceException` (ngoài kỳ hiệu lực, hết hạn mức), processor gọi `claim.reject(e.getMessage())` rồi ném tiếp ngoại lệ cho caller.
+- **Lý do**: Claim luôn kết thúc ở trạng thái cuối (`Paid` hoặc `Rejected`) thay vì kẹt ở `UnderReview`; caller vẫn biết lý do. Processor không rẽ nhánh theo loại hợp đồng hay loại lỗi.
+
+### 7. [QUYẾT ĐỊNH] Sao kê luôn có lịch sử bồi thường
+- **Nội dung**: `StatementGenerator.generate(holder, asOfDate, registry)` bắt buộc có `ClaimRegistry` (bỏ overload không có lịch sử). Hợp đồng chưa hoặc hết hiệu lực được liệt kê riêng và không tính vào tổng. Claim bị từ chối hiển thị lý do.
+- **Lý do**: Yêu cầu 5 là sao kê gồm hợp đồng hiệu lực **và** lịch sử claim. Số tiền ghi là "Đã duyệt chi" vì `totalPayout` tăng ở bước `approve`, không phải `pay`.
+
+### 8. [GIẢ ĐỊNH] `ClaimRegistry` từ chối thêm trùng cùng một `Claim`
+- **Lý do**: Cùng quy tắc với `Policyholder.addPolicy`; tránh lịch sử claim bị nhân đôi trên sao kê.
+
+### 9. [ĐÁNH ĐỔI] `Policy.approvePayout` vẫn là `public`
+- **Nội dung**: `UnderReviewState` (package `insurance.claim`) phải gọi được `approvePayout` của `Policy` (package `insurance.policy`), nên phương thức này không thể package-private nếu giữ nguyên cấu trúc package.
+- **Lý do chấp nhận**: Bất biến hạn mức vẫn do chính `Policy` bảo vệ (kiểm tra `loss`, kỳ hiệu lực, cắt trần, nguyên tử); `Claim` là caller duy nhất trong mã nguồn.
+
+### 10. [QUYẾT ĐỊNH] `Main.defaultPolicyFactory()` là composition root duy nhất
+- **Nội dung**: `PolicyFactoryTest` dùng chính `Main.defaultPolicyFactory()` thay vì tự đăng ký lại, để test kiểm tra đúng cấu hình thật.
