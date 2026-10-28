@@ -18,12 +18,4 @@ public record PolicyPeriod(LocalDate start, LocalDate end) {
         }
         return !d.isBefore(start) && d.isBefore(end);
     }
-
-    public LocalDate getStart() {
-        return start;
-    }
-
-    public LocalDate getEnd() {
-        return end;
-    }
 }

@@ -11,8 +11,4 @@ public class UnknownPolicyTypeException extends InsuranceException {
     public String type() {
         return type;
     }
-
-    public String getType() {
-        return type;
-    }
 }

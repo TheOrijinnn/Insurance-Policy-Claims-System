@@ -19,12 +19,4 @@ public class PolicyNotActiveException extends InsuranceException {
     public LocalDate date() {
         return date;
     }
-
-    public String getPolicyId() {
-        return policyId;
-    }
-
-    public LocalDate getDate() {
-        return date;
-    }
 }

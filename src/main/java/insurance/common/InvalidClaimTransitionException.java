@@ -17,12 +17,4 @@ public class InvalidClaimTransitionException extends InsuranceException {
     public String action() {
         return action;
     }
-
-    public String getStateName() {
-        return stateName;
-    }
-
-    public String getAction() {
-        return action;
-    }
 }

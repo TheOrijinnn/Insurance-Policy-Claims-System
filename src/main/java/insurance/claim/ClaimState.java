@@ -2,7 +2,7 @@ package insurance.claim;
 
 import insurance.common.InvalidClaimTransitionException;
 
-public interface ClaimState {
+interface ClaimState {
     String name();
 
     default void startReview(Claim c) {

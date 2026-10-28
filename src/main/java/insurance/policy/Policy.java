@@ -6,7 +6,6 @@ import insurance.common.PolicyNotActiveException;
 import insurance.common.PolicyPeriod;
 
 import java.time.LocalDate;
-import java.util.Objects;
 
 public abstract class Policy {
     private final String id;
@@ -48,7 +47,7 @@ public abstract class Policy {
         }
         requireActiveOn(lossDate);
         Money raw = calculatePayout(loss);
-        Money remaining = coverageLimit.minus(totalPayout);
+        Money remaining = remainingLimit();
         if (raw.isPositive() && remaining.isZero()) {
             throw new CoverageLimitExceededException(id, remaining);
         }
@@ -57,7 +56,7 @@ public abstract class Policy {
         return payout;
     }
 
-    public final void requireActiveOn(LocalDate d) {
+    private void requireActiveOn(LocalDate d) {
         if (!isActiveOn(d)) {
             throw new PolicyNotActiveException(id, d);
         }
