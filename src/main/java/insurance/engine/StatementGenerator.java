@@ -12,9 +12,11 @@ import java.util.Objects;
 
 /**
  * Trình tạo báo cáo sao kê hợp đồng và bồi thường cho chủ hợp đồng (Statement Generator).
- * Tự động lọc bỏ các hợp đồng không còn hiệu lực tại thời điểm lập báo cáo.
+ * Chỉ các hợp đồng còn hiệu lực tại ngày sao kê được tính vào phần tổng cộng.
  */
 public class StatementGenerator {
+    private static final String LINE = "------------------------------------------------------------\n";
+    private static final String DOUBLE_LINE = "============================================================\n";
 
     /**
      * Lọc danh sách các hợp đồng còn hiệu lực tại ngày truy vấn.
@@ -30,7 +32,7 @@ public class StatementGenerator {
     /**
      * Lọc danh sách các hợp đồng đã hết hạn hoặc chưa có hiệu lực tại ngày truy vấn.
      */
-    public List<Policy> expiredPolicies(Policyholder holder, LocalDate asOfDate) {
+    public List<Policy> inactivePolicies(Policyholder holder, LocalDate asOfDate) {
         Objects.requireNonNull(holder, "Policyholder cannot be null");
         Objects.requireNonNull(asOfDate, "asOfDate cannot be null");
         return holder.policies().stream()
@@ -39,34 +41,20 @@ public class StatementGenerator {
     }
 
     /**
-     * Tạo báo cáo sao kê dạng văn bản cho chủ hợp đồng tại một thời điểm nhất định.
-     */
-    public String generate(Policyholder holder, LocalDate asOfDate) {
-        return generate(holder, asOfDate, null);
-    }
-
-    /**
-     * Tạo báo cáo sao kê chi tiết gồm cả thông tin hợp đồng hiệu lực và lịch sử bồi thường.
+     * Tạo báo cáo sao kê gồm các hợp đồng còn hiệu lực và lịch sử yêu cầu bồi thường.
      */
     public String generate(Policyholder holder, LocalDate asOfDate, ClaimRegistry registry) {
-        Objects.requireNonNull(holder, "Policyholder cannot be null");
-        Objects.requireNonNull(asOfDate, "asOfDate cannot be null");
-
+        Objects.requireNonNull(registry, "ClaimRegistry cannot be null");
         List<Policy> activeList = activePolicies(holder, asOfDate);
-        List<Policy> expiredList = expiredPolicies(holder, asOfDate);
-
-        System.out.println("[StatementGenerator] Tạo báo cáo sao kê cho khách hàng: " + holder.name()
-                + " (Mã: " + holder.id() + ") tính đến ngày " + asOfDate);
-        System.out.println("[StatementGenerator] -> Số hợp đồng hiệu lực: " + activeList.size()
-                + " | Số hợp đồng hết hạn bị lọc: " + expiredList.size());
+        List<Policy> inactiveList = inactivePolicies(holder, asOfDate);
 
         StringBuilder sb = new StringBuilder();
-        sb.append("============================================================\n");
+        sb.append(DOUBLE_LINE);
         sb.append("             BÁO CÁO SAO KÊ HỢP ĐỒNG BẢO HIỂM              \n");
-        sb.append("============================================================\n");
+        sb.append(DOUBLE_LINE);
         sb.append(String.format("Khách hàng: %s (Mã: %s)\n", holder.name(), holder.id()));
         sb.append(String.format("Thời điểm sao kê: %s\n", asOfDate));
-        sb.append("------------------------------------------------------------\n");
+        sb.append(LINE);
         sb.append("I. CÁC HỢP ĐỒNG CÒN HIỆU LỰC:\n");
 
         Money totalPremium = Money.ZERO;
@@ -75,50 +63,50 @@ public class StatementGenerator {
 
         if (activeList.isEmpty()) {
             sb.append("  (Không có hợp đồng nào đang có hiệu lực)\n");
-        } else {
-            for (Policy p : activeList) {
-                Money premium = p.calculatePremium();
-                Money payout = p.totalPayout();
-                Money remaining = p.remainingLimit();
+        }
+        for (Policy p : activeList) {
+            Money premium = p.calculatePremium();
+            totalPremium = totalPremium.plus(premium);
+            totalPayout = totalPayout.plus(p.totalPayout());
+            totalRemaining = totalRemaining.plus(p.remainingLimit());
 
-                totalPremium = totalPremium.plus(premium);
-                totalPayout = totalPayout.plus(payout);
-                totalRemaining = totalRemaining.plus(remaining);
-
-                sb.append(String.format("  - [%s] %s | Hạn mức: %s | Phí: %s | Đã chi trả: %s | Còn lại: %s\n",
-                        p.id(), p.typeName(), p.coverageLimit(), premium, payout, remaining));
-            }
+            sb.append(String.format("  - [%s] %s | Hạn mức: %s | Phí: %s | Đã duyệt chi: %s | Còn lại: %s\n",
+                    p.id(), p.typeName(), p.coverageLimit(), premium, p.totalPayout(), p.remainingLimit()));
         }
 
-        sb.append("------------------------------------------------------------\n");
-        sb.append(String.format("TỔNG CỘNG: Phí: %s | Đã bồi thường: %s | Hạn mức còn lại: %s\n",
+        sb.append(LINE);
+        sb.append(String.format("TỔNG CỘNG (HĐ còn hiệu lực): Phí: %s | Đã duyệt chi: %s | Hạn mức còn lại: %s\n",
                 totalPremium, totalPayout, totalRemaining));
 
-        if (!expiredList.isEmpty()) {
-            sb.append("------------------------------------------------------------\n");
-            sb.append("II. CÁC HỢP ĐỒNG ĐÃ HẾT HẠN (ĐÃ LỌC BỎ KHỎI SAO KÊ HIỆU LỰC):\n");
-            for (Policy p : expiredList) {
-                sb.append(String.format("  - [%s] %s (Hết hạn ngày: %s)\n",
-                        p.id(), p.typeName(), p.period().end()));
+        if (!inactiveList.isEmpty()) {
+            sb.append(LINE);
+            sb.append("II. CÁC HỢP ĐỒNG KHÔNG CÓ HIỆU LỰC TẠI NGÀY SAO KÊ (KHÔNG TÍNH VÀO TỔNG):\n");
+            for (Policy p : inactiveList) {
+                String when = asOfDate.isBefore(p.period().start())
+                        ? "Hiệu lực từ ngày: " + p.period().start()
+                        : "Hết hạn ngày: " + p.period().end();
+                sb.append(String.format("  - [%s] %s (%s)\n", p.id(), p.typeName(), when));
             }
         }
 
-        if (registry != null) {
-            sb.append("------------------------------------------------------------\n");
-            sb.append("III. LỊCH SỬ YÊU CẦU BỒI THƯỜNG:\n");
-            List<Claim> claims = registry.byHolder(holder);
-            if (claims.isEmpty()) {
-                sb.append("  (Chưa có yêu cầu bồi thường nào)\n");
-            } else {
-                for (Claim c : claims) {
-                    sb.append(String.format("  - [%s] Hợp đồng: %s | Tổn thất: %s | Trạng thái: %s | Đã duyệt: %s\n",
-                            c.id(), c.policy().id(), c.loss(), c.stateName(),
-                            c.approvedPayout().map(Money::toString).orElse("Chưa duyệt")));
-                }
-            }
+        sb.append(LINE);
+        sb.append("III. LỊCH SỬ YÊU CẦU BỒI THƯỜNG:\n");
+        List<Claim> claims = registry.byHolder(holder);
+        if (claims.isEmpty()) {
+            sb.append("  (Chưa có yêu cầu bồi thường nào)\n");
+        }
+        for (Claim c : claims) {
+            sb.append(String.format("  - [%s] Hợp đồng: %s | Tổn thất: %s | Trạng thái: %s | %s\n",
+                    c.id(), c.policy().id(), c.loss(), c.stateName(), outcome(c)));
         }
 
-        sb.append("============================================================\n");
+        sb.append(DOUBLE_LINE);
         return sb.toString();
+    }
+
+    private static String outcome(Claim c) {
+        return c.approvedPayout().map(p -> "Đã duyệt: " + p)
+                .or(() -> c.rejectionReason().map(r -> "Từ chối: " + r))
+                .orElse("Chưa duyệt");
     }
 }

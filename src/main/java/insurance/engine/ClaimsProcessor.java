@@ -1,51 +1,36 @@
 package insurance.engine;
 
 import insurance.claim.Claim;
+import insurance.common.InsuranceException;
 import insurance.common.Money;
 
-import java.util.List;
 import java.util.Objects;
 
 /**
  * Điều phối và tự động hóa quy trình xử lý yêu cầu bồi thường (E2E Claim Processing).
+ * Không rẽ nhánh theo loại hợp đồng: số tiền bồi thường do chính Policy tính (đa hình).
  */
 public class ClaimsProcessor {
 
     /**
      * Xử lý trọn gói quy trình bồi thường (E2E):
      * Submitted -> UnderReview -> Approved -> Paid.
+     * Nếu Policy từ chối chi trả (ngoài kỳ hiệu lực, hết hạn mức), claim chuyển sang Rejected
+     * với lý do là thông báo lỗi, rồi ngoại lệ được ném tiếp cho caller.
      *
      * @param claim Yêu cầu bồi thường cần xử lý
      * @return Số tiền bồi thường thực tế đã được phê duyệt và chi trả
      */
     public Money process(Claim claim) {
         Objects.requireNonNull(claim, "Claim cannot be null");
-
-        System.out.println("[ClaimsProcessor] Bắt đầu quy trình xử lý yêu cầu bồi thường " + claim.id()
-                + " cho hợp đồng " + claim.policy().id() + " (Tổn thất: " + claim.loss() + " VND)");
-
-        // 1. Chuyển sang UnderReview
         claim.startReview();
-        System.out.println("[ClaimsProcessor] -> Chuyển trạng thái: " + claim.stateName());
-
-        // 2. Thẩm định và duyệt chi trả
-        claim.approve();
-        Money approved = claim.approvedPayout().orElse(Money.ZERO);
-        System.out.println("[ClaimsProcessor] -> Đã duyệt chi trả: " + approved
-                + " VND | Hạn mức còn lại của hợp đồng: " + claim.policy().remainingLimit() + " VND");
-
-        // 3. Thực hiện chi trả
+        try {
+            claim.approve();
+        } catch (InsuranceException e) {
+            claim.reject(e.getMessage());
+            throw e;
+        }
         claim.pay();
-        System.out.println("[ClaimsProcessor] -> Đã hoàn tất chi trả. Trạng thái cuối: " + claim.stateName());
-
-        return approved;
-    }
-
-    /**
-     * Xử lý danh sách các yêu cầu bồi thường liên tiếp.
-     */
-    public List<Money> processAll(List<Claim> claims) {
-        Objects.requireNonNull(claims, "Claims list cannot be null");
-        return claims.stream().map(this::process).toList();
+        return claim.approvedPayout().orElseThrow();
     }
 }

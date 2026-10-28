@@ -2,6 +2,7 @@ package insurance.engine;
 
 import insurance.claim.Claim;
 import insurance.common.Money;
+import insurance.common.PolicyNotActiveException;
 import insurance.common.PolicyPeriod;
 import insurance.policy.AutoPolicy;
 import insurance.policy.Policy;
@@ -32,5 +33,21 @@ class ClaimsProcessorTest {
         assertEquals("Paid", claim.stateName());
         assertEquals(Money.of("45000000"), claim.approvedPayout().orElseThrow());
         System.out.println("========== [HOÀN THÀNH T1 E2E: PAYOUT 45.000.000, REMAINING 55.000.000] ==========\n");
+    }
+
+    @Test
+    @DisplayName("Policy từ chối chi trả (ngoài kỳ hiệu lực) -> claim chuyển Rejected kèm lý do, ngoại lệ được ném tiếp, không chi tiền")
+    void testPolicyRefusalRejectsClaim() {
+        PolicyPeriod period2026 = new PolicyPeriod(LocalDate.of(2026, 1, 1), LocalDate.of(2027, 1, 1));
+        Policy autoPolicy = new AutoPolicy("POL-AUTO-REJ", period2026, Money.of("100000000"));
+        Claim claim = new Claim("CLM-REJ", autoPolicy, Money.of("50000000"), LocalDate.of(2027, 1, 1));
+
+        PolicyNotActiveException ex = assertThrows(PolicyNotActiveException.class,
+                () -> new ClaimsProcessor().process(claim));
+
+        assertEquals("Rejected", claim.stateName());
+        assertEquals(ex.getMessage(), claim.rejectionReason().orElseThrow());
+        assertTrue(claim.approvedPayout().isEmpty());
+        assertEquals(Money.ZERO, autoPolicy.totalPayout());
     }
 }
