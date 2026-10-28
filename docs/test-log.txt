@@ -1,0 +1,120 @@
+# Code freeze - Tuần 2: log chạy kiểm thử tự động lần cuối
+# Thời điểm : 2026-10-28 10:31 +07
+# Nhánh     : Week_2 @ 38a8732
+# Môi trường: openjdk version "21.0.12.1" 2026-08-18; Apache Maven 3.9.11
+# Lệnh      : mvn clean test
+
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] ------------------------< insurance:claimflow >-------------------------
+[INFO] Building claimflow 1.0-SNAPSHOT
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- clean:3.2.0:clean (default-clean) @ claimflow ---
+[INFO] Deleting /home/user/Insurance-Policy-Claims-System/target
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ claimflow ---
+[INFO] skip non existing resourceDirectory /home/user/Insurance-Policy-Claims-System/src/main/resources
+[INFO] 
+[INFO] --- compiler:3.13.0:compile (default-compile) @ claimflow ---
+[INFO] Recompiling the module because of changed source code.
+[INFO] Compiling 26 source files with javac [debug release 17] to target/classes
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ claimflow ---
+[INFO] skip non existing resourceDirectory /home/user/Insurance-Policy-Claims-System/src/test/resources
+[INFO] 
+[INFO] --- compiler:3.13.0:testCompile (default-testCompile) @ claimflow ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 12 source files with javac [debug release 17] to target/test-classes
+[INFO] 
+[INFO] --- surefire:3.2.5:test (default-test) @ claimflow ---
+[INFO] Using auto detected provider org.apache.maven.surefire.junitplatform.JUnitPlatformProvider
+[INFO] 
+[INFO] -------------------------------------------------------
+[INFO]  T E S T S
+[INFO] -------------------------------------------------------
+[INFO] Running insurance.policy.PolicyholderTest
+[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.069 s -- in insurance.policy.PolicyholderTest
+[INFO] Running insurance.policy.TravelPolicyOcpTest
+
+========== [DEMO - T6 OCP: MỞ RỘNG TRAVELPOLICY TRONG SRC/TEST] ==========
+[T6 OCP] Đã đăng ký thành công creator cho loại hợp đồng 'TRAVEL' vào PolicyFactory
+[T6 OCP] Khởi tạo thành công hợp đồng: POL-TRAV-001 | Loại: Travel | Phí bảo hiểm: 1.500.000
+[T6 OCP] Duyệt chi trả yêu cầu bồi thường tổn thất 50.000.000 VND -> Payout: 35.000.000 VND
+========== [HOÀN THÀNH T6 OCP: PAYOUT 35.000.000 VND, SRC/MAIN KHÔNG THAY ĐỔI] ==========
+
+[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.042 s -- in insurance.policy.TravelPolicyOcpTest
+[INFO] Running insurance.policy.PolicyTest
+[INFO] Tests run: 8, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.031 s -- in insurance.policy.PolicyTest
+[INFO] Running insurance.policy.PolymorphismAndPeriodTest
+
+========== [DEMO - T5 ĐA HÌNH AUTO / HOME / HEALTH] ==========
+[T5 Polymorphism] Đánh giá tổn thất 50.000.000 VND trên 3 loại hợp đồng:
+  + AutoPolicy   -> Payout: 45.000.000 VND (Kỳ vọng: 45.000.000 VND)
+  + HomePolicy   -> Payout: 42.500.000 VND (Kỳ vọng: 42.500.000 VND)
+  + HealthPolicy -> Payout: 38.400.000 VND (Kỳ vọng: 38.400.000 VND)
+========== [HOÀN THÀNH T5: KẾT QUẢ CHUẨN XÁC 45TR / 42,5TR / 38,4TR] ==========
+
+
+========== [DEMO - T7 BỒI THƯỜNG NGOÀI KỲ HIỆU LỰC] ==========
+[T7 Out-Of-Period] Tạo Claim ngày 2027-01-01 ngoài kỳ hạn hợp đồng [2026-01-01 đến 2027-01-01)
+[T7 Out-Of-Period] Chuyển trạng thái sang: UnderReview
+[T7 Out-Of-Period] Đã chặn thành công với ngoại lệ: PolicyNotActiveException - Policy POL-AUTO-T7 is not active on 2027-01-01
+[T7 Out-Of-Period] Bất biến được bảo toàn: Total payout = 0 VND, Remaining limit = 100.000.000 VND
+========== [HOÀN THÀNH T7: CHẶN BỒI THƯỜNG NGOÀI KỲ HIỆU LỰC THÀNH CÔNG] ==========
+
+[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.010 s -- in insurance.policy.PolymorphismAndPeriodTest
+[INFO] Running insurance.policy.PolicyFactoryTest
+[INFO] Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.012 s -- in insurance.policy.PolicyFactoryTest
+[INFO] Running insurance.engine.StatementGeneratorTest
+
+========== [DEMO - STATEMENT GENERATOR: ACTIVE & EXPIRED FILTERING] ==========
+============================================================
+             BÁO CÁO SAO KÊ HỢP ĐỒNG BẢO HIỂM              
+============================================================
+Khách hàng: Nguyen Van An (Mã: H-001)
+Thời điểm sao kê: 2026-06-15
+------------------------------------------------------------
+I. CÁC HỢP ĐỒNG CÒN HIỆU LỰC:
+  - [POL-ACTIVE-AUTO] Auto | Hạn mức: 100.000.000 | Phí: 2.500.000 | Đã duyệt chi: 0 | Còn lại: 100.000.000
+  - [POL-ACTIVE-HEALTH] Health | Hạn mức: 50.000.000 | Phí: 2.000.000 | Đã duyệt chi: 0 | Còn lại: 50.000.000
+------------------------------------------------------------
+TỔNG CỘNG (HĐ còn hiệu lực): Phí: 4.500.000 | Đã duyệt chi: 0 | Hạn mức còn lại: 150.000.000
+------------------------------------------------------------
+II. CÁC HỢP ĐỒNG KHÔNG CÓ HIỆU LỰC TẠI NGÀY SAO KÊ (KHÔNG TÍNH VÀO TỔNG):
+  - [POL-EXPIRED-HOME] Home (Hết hạn ngày: 2026-01-01)
+  - [POL-FUTURE-AUTO] Auto (Hiệu lực từ ngày: 2027-01-01)
+------------------------------------------------------------
+III. LỊCH SỬ YÊU CẦU BỒI THƯỜNG:
+  (Chưa có yêu cầu bồi thường nào)
+============================================================
+
+========== [HOÀN THÀNH STATEMENT GENERATOR TEST THÀNH CÔNG] ==========
+
+[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.009 s -- in insurance.engine.StatementGeneratorTest
+[INFO] Running insurance.engine.ClaimsProcessorTest
+
+========== [DEMO - T1 E2E CLAIM PROCESSING] ==========
+========== [HOÀN THÀNH T1 E2E: PAYOUT 45.000.000, REMAINING 55.000.000] ==========
+
+[INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.008 s -- in insurance.engine.ClaimsProcessorTest
+[INFO] Running insurance.common.PolicyPeriodTest
+[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.007 s -- in insurance.common.PolicyPeriodTest
+[INFO] Running insurance.common.MoneyTest
+[INFO] Tests run: 13, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.019 s -- in insurance.common.MoneyTest
+[INFO] Running insurance.claim.ClaimRegistryTest
+[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.004 s -- in insurance.claim.ClaimRegistryTest
+[INFO] Running insurance.claim.ClaimStateTest
+[INFO] Tests run: 23, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.082 s -- in insurance.claim.ClaimStateTest
+[INFO] 
+[INFO] Results:
+[INFO] 
+[INFO] Tests run: 62, Failures: 0, Errors: 0, Skipped: 0
+[INFO] 
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  2.777 s
+[INFO] Finished at: 2026-10-28T03:31:17Z
+[INFO] ------------------------------------------------------------------------
