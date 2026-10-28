@@ -1,6 +1,7 @@
 package insurance.engine;
 
 import insurance.claim.Claim;
+import insurance.common.InsuranceException;
 import insurance.common.Money;
 import insurance.common.PolicyNotActiveException;
 import insurance.common.PolicyPeriod;
@@ -49,5 +50,22 @@ class ClaimsProcessorTest {
         assertEquals(ex.getMessage(), claim.rejectionReason().orElseThrow());
         assertTrue(claim.approvedPayout().isEmpty());
         assertEquals(Money.ZERO, autoPolicy.totalPayout());
+    }
+
+    @Test
+    @DisplayName("Loại hợp đồng mới ném InsuranceException không có thông báo -> claim vẫn Rejected, lý do là tên ngoại lệ")
+    void testRefusalWithoutMessageStillRejectsClaim() {
+        PolicyPeriod period2026 = new PolicyPeriod(LocalDate.of(2026, 1, 1), LocalDate.of(2027, 1, 1));
+        Policy silent = new AutoPolicy("POL-SILENT", period2026, Money.of("100000000")) {
+            @Override
+            protected Money calculatePayout(Money loss) {
+                throw new InsuranceException(null);
+            }
+        };
+        Claim claim = new Claim("CLM-SILENT", silent, Money.of("50000000"), LocalDate.of(2026, 6, 15));
+
+        assertThrows(InsuranceException.class, () -> new ClaimsProcessor().process(claim));
+        assertEquals("Rejected", claim.stateName());
+        assertEquals("InsuranceException", claim.rejectionReason().orElseThrow());
     }
 }

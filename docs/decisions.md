@@ -48,8 +48,8 @@
 2. `UnderReviewState.approve(c)` gọi `c.policy().approvePayout(c.loss(), c.lossDate())`:
    - Kiểm tra `loss.isPositive()`, nếu không ném `IllegalArgumentException`.
    - Gọi `requireActiveOn(lossDate)`, nếu ngoài kỳ hạn hợp đồng ném `PolicyNotActiveException`.
-   - Tính `raw = calculatePayout(loss)` theo công thức đa hình của từng dòng `Policy` (`AutoPolicy`, `HomePolicy`, `HealthPolicy`).
-   - Tính hạn mức còn lại `remaining = coverageLimit.minus(totalPayout)`.
+   - Tính `raw = calculatePayout(loss).atLeastZero()` theo công thức đa hình của từng dòng `Policy` (`AutoPolicy`, `HomePolicy`, `HealthPolicy`), chặn về 0 nếu lớp con trả số âm (xem #5).
+   - Tính hạn mức còn lại `remaining = remainingLimit()` (= `coverageLimit.minus(totalPayout)`).
    - Nếu `raw.isPositive() && remaining.isZero()` thì ném `CoverageLimitExceededException(id, remaining)`.
    - Cắt trần theo hạn mức còn lại: `payout = raw.min(remaining)`.
    - Cộng dồn `totalPayout = totalPayout.plus(payout)` ở dòng cuối cùng và trả về `payout`.
@@ -80,8 +80,8 @@
 - **Lý do**: Bất biến hạn mức thuộc về `Policy`, không phụ thuộc việc từng lớp con nhớ gọi `atLeastZero()`. Một loại hợp đồng mới (OCP) có công thức trả về số âm cũng không thể làm giảm `totalPayout`.
 
 ### 6. [QUYẾT ĐỊNH] `ClaimsProcessor` chuyển claim sang `Rejected` khi `Policy` từ chối chi trả
-- **Nội dung**: Nếu `claim.approve()` ném `InsuranceException` (ngoài kỳ hiệu lực, hết hạn mức), processor gọi `claim.reject(e.getMessage())` rồi ném tiếp ngoại lệ cho caller.
-- **Lý do**: Claim luôn kết thúc ở trạng thái cuối (`Paid` hoặc `Rejected`) thay vì kẹt ở `UnderReview`; caller vẫn biết lý do. Processor không rẽ nhánh theo loại hợp đồng hay loại lỗi.
+- **Nội dung**: Nếu `claim.approve()` ném `InsuranceException` (ngoài kỳ hiệu lực, hết hạn mức), processor gọi `claim.reject(...)` với thông báo lỗi làm lý do (hoặc tên lớp ngoại lệ nếu thông báo rỗng) rồi ném tiếp ngoại lệ cho caller.
+- **Lý do**: Khi `Policy` từ chối chi trả bằng `InsuranceException`, claim kết thúc ở `Rejected` thay vì kẹt ở `UnderReview`; caller vẫn biết lý do. Processor không rẽ nhánh theo loại hợp đồng hay loại lỗi.
 
 ### 7. [QUYẾT ĐỊNH] Sao kê luôn có lịch sử bồi thường
 - **Nội dung**: `StatementGenerator.generate(holder, asOfDate, registry)` bắt buộc có `ClaimRegistry` (bỏ overload không có lịch sử). Hợp đồng chưa hoặc hết hiệu lực được liệt kê riêng và không tính vào tổng. Claim bị từ chối hiển thị lý do.

@@ -27,7 +27,8 @@ public class ClaimsProcessor {
         try {
             claim.approve();
         } catch (InsuranceException e) {
-            claim.reject(e.getMessage());
+            String reason = e.getMessage();
+            claim.reject(reason == null || reason.isBlank() ? e.getClass().getSimpleName() : reason);
             throw e;
         }
         claim.pay();
